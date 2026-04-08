@@ -6,10 +6,17 @@ const UserRoutes = require('./routes/UserRoutes.js');
 const ProductRoutes = require('./routes/ProductRoutes.js');
 const session = require('express-session');
 const AuthRoutes = require('./routes/AuthRoutes.js');
-// const db = require('./config/database.js');
+const SeqeulizeStore = require('connect-session-sequelize');
+const db = require('./config/database.js');
 dotenv.config();
 
 const app = express();
+
+const sessionStore = SeqeulizeStore(session.Store);
+const store = new sessionStore({
+    db: db
+});
+
 app.use(cors({
     credentials: true,
     origin: 'http://localhost:5000'
@@ -20,6 +27,7 @@ app.use(session({
     secret : process.env.SESS_SECRET,
     resave : false,
     saveUninitialized : true,
+    store : store,
     cookie : {
         secure : "auto",
     }
@@ -30,7 +38,7 @@ app.use(UserRoutes);
 app.use(ProductRoutes);
 app.use(AuthRoutes);
 
-
+// store.sync();
 // (async () => {
 //     await db.sync();
 // })();
