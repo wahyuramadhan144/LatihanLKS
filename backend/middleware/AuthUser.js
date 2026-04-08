@@ -1,4 +1,4 @@
-const User = require("../models/UserModel");
+const User = require("../models/UserModels");
 
 exports.verifyUser = async (req, res, next) => {
     if(!req.session.userId) return res.status(401).json({ msg: "Mohon login ke akun Anda!" });
