@@ -7,6 +7,7 @@ const ProductRoutes = require('./routes/ProductRoutes.js');
 const AuthRoutes    = require('./routes/AuthRoutes.js');
 const { sql, poolPromise } = require('./config/db.js');       // MSSQL
 const sequelize             = require('./config/database.js'); // MySQL via Sequelize
+const OrderRoutes    = require('./routes/0rderRoutes.js');
 
 dotenv.config();
 
@@ -29,10 +30,12 @@ app.use(session({
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.use(UserRoutes);
 app.use(ProductRoutes);
 app.use(AuthRoutes);
+app.use(OrderRoutes.router);
 
 (async () => {
     try {
