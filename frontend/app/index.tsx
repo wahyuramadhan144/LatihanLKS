@@ -1,148 +1,71 @@
-import { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Button, FlatList, StyleSheet,
-  Text, TextInput,
-  View
+    View, Text, TextInput,
+    TouchableOpacity, Alert, StyleSheet
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import api from './api';
+import products from './products'
 
-const API_URL = 'https://unskilfully-easier-drema.ngrok-free.dev';
+export default function LoginScreen() {
+    const router                      = useRouter();
+    const [email, setEmail]           = useState<string>('');
+    const [password, setPassword]     = useState<string>('');
+    const [loading, setLoading]       = useState<boolean>(false);
 
-type Item = {
-  id: number;
-  nama: string;
-};
+    const handleLogin = async (): Promise<void> => {
+        if (!email || !password) {
+            Alert.alert('Error', 'Email dan password wajib diisi');
+            return;
+        }
+        try {
+            setLoading(true);
+            const response = await api.post('/login', { email, password });
+            Alert.alert('Berhasil', `Selamat datang, ${response.data.name}!`);
+            router.replace('/products');
+        } catch (error: any) {
+            Alert.alert('Gagal', error.response?.data?.msg || 'Login gagal');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-export default function App() {
-  const [nama, setNama]       = useState('');
-  const [items, setItems]     = useState<Item[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [editId, setEditId]   = useState<number | null>(null);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const res  = await fetch(`${API_URL}/items`);
-      const data = await res.json();
-      setItems(data);
-    } catch (e) {
-      Alert.alert('Error', 'Gagal mengambil data!');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const tambahData = async () => {
-    if (!nama.trim()) {
-      Alert.alert('Peringatan', 'Nama tidak boleh kosong!');
-      return;
-    }
-    await fetch(`${API_URL}/items`, {
-      method  : 'POST',
-      headers : { 'Content-Type': 'application/json' },
-      body    : JSON.stringify({ nama }),
-    });
-    setNama('');
-    loadData();
-  };
-
-  const updateData = async () => {
-    if (!nama.trim()) {
-      Alert.alert('Peringatan', 'Nama tidak boleh kosong!');
-      return;
-    }
-    await fetch(`${API_URL}/items/${editId}`, {
-      method  : 'PUT',
-      headers : { 'Content-Type': 'application/json' },
-      body    : JSON.stringify({ nama }),
-    });
-    setNama('');
-    setEditId(null);
-    loadData();
-  };
-
-  const mulaiEdit = (item: Item) => {
-    setEditId(item.id);
-    setNama(item.nama);
-  };
-
-  const batalEdit = () => {
-    setEditId(null);
-    setNama('wahyu');
-  };
-
-  const hapusData = async (id: number) => {
-    Alert.alert('Konfirmasi', 'Yakin ingin menghapus?', [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Hapus',
-        style: 'destructive',
-        onPress: async () => {
-          await fetch(`${API_URL}/items/${id}`, { method: 'DELETE' });
-          loadData();
-        },
-      },
-    ]);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.judul}> Latihan</Text>
-
-      <TextInput
-        placeholder="Nama item..."
-        value={nama}
-        onChangeText={setNama}
-        style={styles.input}
-      />
-
-      {editId === null ? (
-        <Button title=" Tambah" onPress={tambahData} color="#2196F3" />
-      ) : (
-        <View style={styles.row}>
-          <View style={{ flex: 1 }}>
-            <Button title=" Simpan" onPress={updateData} color="#4CAF50" />
-          </View>
-          <View style={{ width: 8 }} />
-          <View style={{ flex: 1 }}>
-            <Button title="✖ Batal" onPress={batalEdit} color="#9E9E9E" />
-          </View>
+    return (
+        <View style={styles.container}>
+            <Text style={styles.title}>Login</Text>
+            <TextInput
+                style={styles.input}
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+            />
+            <TextInput
+                style={styles.input}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+            />
+            <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleLogin}
+                disabled={loading}
+            >
+                <Text style={styles.buttonText}>
+                    {loading ? 'Loading...' : 'Login'}
+                </Text>
+            </TouchableOpacity>
         </View>
-      )}
-
-      {loading ? (
-        <ActivityIndicator style={{ marginTop: 20 }} size="large" />
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.id.toString()}
-          style={{ marginTop: 16 }}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <Text style={styles.namaItem}>{item.nama}</Text>
-              <View style={styles.row}>
-                <Button title="Edit" onPress={() => mulaiEdit(item)} color="#FF9800" />
-                <View style={{ width: 8 }} />
-                <Button title="Hapus" onPress={() => hapusData(item.id)} color="#F44336" />
-              </View>
-            </View>
-          )}
-        />
-      )}
-    </View>
-  );
+    );
 }
 
 const styles = StyleSheet.create({
-  container : { flex: 1, padding: 20, paddingTop: 60, backgroundColor: '#F5F5F5' },
-  judul     : { fontSize: 26, fontWeight: 'bold', marginBottom: 16 },
-  input     : { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, backgroundColor: '#fff', marginBottom: 10 },
-  card      : { backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  namaItem  : { fontSize: 16, flex: 1, marginRight: 10 },
-  row       : { flexDirection: 'row' },
+    container      : { flex: 1, justifyContent: 'center', padding: 20 },
+    title          : { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+    input          : { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 15 },
+    button         : { backgroundColor: '#3498db', padding: 15, borderRadius: 8, alignItems: 'center' },
+    buttonDisabled : { backgroundColor: '#aaa' },
+    buttonText     : { color: 'white', fontWeight: 'bold', fontSize: 16 }
 });
