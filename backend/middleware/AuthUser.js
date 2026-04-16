@@ -1,30 +1,33 @@
-const { sql, poolPromise } = require('../config/db.js');
+const jwt = require('jsonwebtoken')
+require('dotenv').config()
 
-exports.verifyUser = async (req, res, next) => {
-    if (!req.session.userId)
-        return res.status(401).json({ msg: 'Mohon login ke akun Anda!' });
+const verifyToken = (req, res, next) => {
+    const SESS_SECRET = process.env.SESS_SECRET
+    const authHeader = req.headers['authorization']
+    const token = authHeader && authHeader.split(' ')[1]
+    console.log(authHeader)
+
+    if (!token) {
+        return res.status(401).json({message: 'Unautherized'})
+    }
 
     try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('uuid', sql.NVarChar, req.session.userId)
-            .query('SELECT id, uuid, name, email, role FROM users WHERE uuid = @uuid');
-
-        if (result.recordset.length === 0)
-            return res.status(404).json({ msg: 'User tidak ditemukan' });
-
-        const user = result.recordset[0];
-        req.userId = user.id;
-        req.userRole = user.role;
-        next();
-
+        const decoded = jwt.verify(token, SESS_SECRET)
+        console.log(decoded)
+        req.user = decoded
+        next ()
     } catch (error) {
-        res.status(500).json({ msg: error.message });
+        return res.status(403).json({message: 'Tidak ada akses'})
     }
-};
+}
 
-exports.adminOnly = (req, res, next) => {
-    if (req.userRole !== 'admin')
-        return res.status(403).json({ msg: 'Akses ditolak, hanya admin' });
-    next();
-};
+const allowRole = (...roles) => {
+    return (req, res, next) => {
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({message: 'anda tidak memilki akses'})
+        }
+        next ()
+    }
+}
+
+module.exports = {verifyToken, allowRole}

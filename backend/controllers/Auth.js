@@ -1,4 +1,4 @@
-const sql = require('../config/db');
+const db = require('../config/database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 require('dotenv').config()
@@ -42,7 +42,7 @@ exports.Login = async (req, res) => {
         res.status(200).json ({ Message: 'Login berhasil derr', token, id: user.id, role: user.role})
 
     } catch (error) {
-        return res.status(500).json ({Message: 'Login gagal derr', error: error.Message})
+        return res.status(500).json ({Message: 'Login gagal derr', error: error.message})
     }
 }
 
@@ -57,7 +57,7 @@ exports.register = async (req, res) => {
         }
 
         //ini untuk cek nilai harus diisi
-        if ( name=="", email=="", password=="", confirmPassword=="" ) {
+        if ( name=="" || email=="" || password=="" || confirmPassword=="" ) {
             return res.status(400).json ({ Message: 'Diisi bang'})
         }
 
@@ -75,14 +75,13 @@ exports.register = async (req, res) => {
         }
 
         const salt = await bcrypt.genSalt(5)
-        const hashPassword = await bcrypt(hashPassword, salt)
+        const hashPassword = await bcrypt.hash(password, salt)
 
         const sql = 'INSERT INTO users (name, email, role, password) VALUES (?, ?, ?, ?)'
 
-        const [result] = await db.query(sql[name, email, 'user', hashPassword ])
-        return res.status(400).json ({ Message: 'Berhasil terdaftar'})
+        const [result] = await db.query(sql, [name, email, 'admin', hashPassword ])
+        return res.status(201).json ({ Message: 'Berhasil terdaftar'})
 
-        console.log(result)
     } catch ( error ){
         res.status(500).send('Error Debugging')
         console.log(error)
@@ -94,19 +93,18 @@ exports.registerAdmin = async (req, res) => {
         const { name, email, password } = req.body
 
         //ini untuk cek nilai harus diisi 
-        if ( name=="", email=="", password=="", confirmPassword=="" ) {
+        if ( name==""|| email=="" || password=="" ) {
             return res.status(400).json ({ Message: 'Diisi bang'})
         }
 
         const salt = await bcrypt.genSalt(5)
-        const hashPassword = await bcrypt(hashPassword, salt)
+        const hashPassword = await bcrypt(password, salt)
 
         const sql = 'INSERT INTO users (name, email, role, password) VALUES (?, ?, ?, ?)'
 
-        const [result] = await db.query(sql[name, email, 'admin', hashPassword ])
-        return res.status(400).json ({ Message: 'Berhasil terdaftar menjadi Admin'})
+        const [result] = await db.query(sql, [name, email, 'admin', hashPassword ])
+        return res.status(201).json ({ Message: 'Berhasil terdaftar menjadi Admin'})
 
-        console.log(result)
     } catch ( error ){
         res.status(500).send('Error Debugging')
         console.log(error)
