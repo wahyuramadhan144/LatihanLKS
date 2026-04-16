@@ -7,7 +7,7 @@ exports.getProducts = async (req, res) => {
             .query(`
                 SELECT 
                     p.id, p.uuid, p.name, p.price, p.role,
-                    u.name AS userName, u.email AS userEmail
+                    u.name AS userName, u.email AS userEmail+
                 FROM products p
                 INNER JOIN users u ON p.userId = u.id
             `);

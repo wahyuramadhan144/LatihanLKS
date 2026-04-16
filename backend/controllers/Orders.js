@@ -54,7 +54,7 @@ exports.createOrder = async (req, res) => {
                 .input('subtotal',  sql.Int, item.subtotal)
                 .query(`
                     INSERT INTO order_items (orderId, productId, quantity, price, subtotal)
-                    VALUES (@orderId, @productId, @quantity, @price, @subtotal)
+                    VALUES (@orderId, @productId, @quanti ty, @price, @subtotal)
                 `);
         }
 

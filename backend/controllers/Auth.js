@@ -1,49 +1,114 @@
-const { sql, poolPromise } = require('../config/db.js');
-const argon2 = require('argon2');
+const sql = require('../config/db');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+require('dotenv').config()
 
-exports.login = async (req, res) => {
+exports.Login = async (req, res) => {
+    const SESS_SECRET = process.env.SESS_SECRET
+
     try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('email', sql.NVarChar, req.body.email)
-            .query('SELECT * FROM users WHERE email = @email');
+        //sesuai dengan form login yang diinginkan
+        const { email, password } = req.body
 
-        if (result.recordset.length === 0)
-            return res.status(404).json({ msg: 'User tidak ditemukan' });
+        //validasi tidak boleh ada yang kosong baik isi maupun array
+        if ( !email || email==="" || !password || password==="" ) {
+            return res.status(400).json ({Message: 'Masukkin derr'})
+        }
 
-        const user = result.recordset[0];
+        //periksa email yang dimasukkan oleh user apakah ada di table atau engga
+        const [ checkUser ] = await db.query('SELECT * FROM users WHERE email=?', [email])
+        // console.log(checkUser)
+        
 
-        const match = await argon2.verify(user.password, req.body.password);
-        if (!match) return res.status(400).json({ msg: 'Password salah' });
+        //jika ada maka data haru lebih dari satu tidak boleh kosong
+        if (checkUser.length === 0) {
+            return res.status(400).json ({Message: 'Masukkin derr'})
+        }
 
-        req.session.userId = user.uuid;
-        const { uuid, name, email, role } = user;
-        res.status(200).json({ uuid, name, email, role });
+        //menyamakan password yang dimasukkan oleh user apakah sama atau tidak 
+        const user = checkUser[0]
+        const comparing = await bcrypt.compare(password, user.password)
+        if (!comparing) {
+            return res.status(400).json ({Message: 'Email atau password salah derr'})
+        }
+
+        //membuat token baru
+        const token = jwt.sign (
+            {id: user.id, role: user.role},
+            SESS_SECRET,
+            {expiresIn : '1d'}
+        )
+
+        res.status(200).json ({ Message: 'Login berhasil derr', token, id: user.id, role: user.role})
 
     } catch (error) {
-        res.status(500).json({ msg: error.message });
+        return res.status(500).json ({Message: 'Login gagal derr', error: error.Message})
     }
-};
+}
 
-exports.Me = async (req, res) => {
+exports.register = async (req, res) => {
     try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('uuid', sql.NVarChar, req.session.userId)
-            .query('SELECT uuid, name, email, role FROM users WHERE uuid = @uuid');
+        const { name, email, password, confirmPassword } = req.body
+        console.log( name, email, password, confirmPassword )
 
-        if (result.recordset.length === 0)
-            return res.status(404).json({ msg: 'User tidak ditemukan' });
+        //ini untuk cek apakah variable nya udah ada apa blom
+        if ( !name || !email || !password || !confirmPassword ){
+            return res.status(400).json ({ Message: 'harap isi variable nya'})
+        }
 
-        res.status(200).json(result.recordset[0]);
-    } catch (error) {
-        res.status(500).json({ msg: error.message });
+        //ini untuk cek nilai harus diisi
+        if ( name=="", email=="", password=="", confirmPassword=="" ) {
+            return res.status(400).json ({ Message: 'Diisi bang'})
+        }
+
+        //periksa email apakah sudah terdaftar atau belum
+        const [checkUser] = await db.query('SELECT * from users WHERE email=?', [email])
+        console.log(checkUser)
+
+        //checkUser.length itu untuk periksa si data dimulai dari 0 dan jika sudah terdaftar maka nilai nya sudah lebih dari 0 dan itu tandanya email sudah didaftarkan sebelumnya
+        if (checkUser.length > 0 ) {
+            return res.status(400).json ({ Message: 'email sudah terdaftar'})
+        }
+
+        if ( password !== confirmPassword ) {
+            return res.status(400).json ({ Message: 'Password tidak sesuai'})
+        }
+
+        const salt = await bcrypt.genSalt(5)
+        const hashPassword = await bcrypt(hashPassword, salt)
+
+        const sql = 'INSERT INTO users (name, email, role, password) VALUES (?, ?, ?, ?)'
+
+        const [result] = await db.query(sql[name, email, 'user', hashPassword ])
+        return res.status(400).json ({ Message: 'Berhasil terdaftar'})
+
+        console.log(result)
+    } catch ( error ){
+        res.status(500).send('Error Debugging')
+        console.log(error)
     }
-};
+}
 
-exports.logout = (req, res) => {
-    req.session.destroy((err) => {
-        if (err) return res.status(400).json({ msg: 'Tidak dapat logout' });
-        res.status(200).json({ msg: 'Logout berhasil' });
-    });
-};
+exports.registerAdmin = async (req, res) => {
+    try {
+        const { name, email, password } = req.body
+
+        //ini untuk cek nilai harus diisi 
+        if ( name=="", email=="", password=="", confirmPassword=="" ) {
+            return res.status(400).json ({ Message: 'Diisi bang'})
+        }
+
+        const salt = await bcrypt.genSalt(5)
+        const hashPassword = await bcrypt(hashPassword, salt)
+
+        const sql = 'INSERT INTO users (name, email, role, password) VALUES (?, ?, ?, ?)'
+
+        const [result] = await db.query(sql[name, email, 'admin', hashPassword ])
+        return res.status(400).json ({ Message: 'Berhasil terdaftar menjadi Admin'})
+
+        console.log(result)
+    } catch ( error ){
+        res.status(500).send('Error Debugging')
+        console.log(error)
+    }
+}
